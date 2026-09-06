@@ -205,36 +205,14 @@
     }
   }
 
-  async function loadYahoo(symbol) {
-    const url = yahooUrl(symbol);
-    const enc = encodeURIComponent(url);
-    const attempts = [
-      async () => fetchJson(url),
-      async () => {
-        const j = await fetchJson("https://api.allorigins.win/get?url=" + enc);
-        if (!j.contents) throw new Error("empty proxy");
-        return JSON.parse(j.contents);
-      },
-      async () => fetchJson("https://corsproxy.io/?" + enc),
-      async () =>
-        fetchJson("https://api.codetabs.com/v1/proxy/?quest=" + encodeURIComponent(url)),
-    ];
-
-    let lastErr;
-    for (const attempt of attempts) {
-      try {
-        const data = await attempt();
-        const result = data?.chart?.result?.[0];
-        if (!result?.meta) throw new Error("bad payload");
-        return result;
-      } catch (err) {
-        lastErr = err;
-      }
-    }
-    throw lastErr || new Error("All quote sources failed");
+  function encodeAll(url) {
+    // Fully encode (including slashes) — some CORS proxies require this.
+    return encodeURIComponent(url);
   }
 
-  function parseQuote(result) {
+  function parseYahooChart(data) {
+    const result = data?.chart?.result?.[0];
+    if (!result?.meta) throw new Error("bad yahoo payload");
     const meta = result.meta;
     const quoteData = result.indicators?.quote?.[0] || {};
     const closes = (quoteData.close || []).filter((v) => v != null);
@@ -247,6 +225,58 @@
       change,
       time: meta.regularMarketTime ? new Date(meta.regularMarketTime * 1000) : new Date(),
     };
+  }
+
+  function parseFinterm(data) {
+    const d = data?.data || data;
+    if (d?.price == null) throw new Error("bad finterm payload");
+    return {
+      symbol: d.symbol,
+      price: d.price,
+      change: d.change ?? (d.price != null && d.prevClose != null ? d.price - d.prevClose : null),
+      time: d.ts ? new Date(d.ts * 1000) : new Date(),
+    };
+  }
+
+  function parseCached(data) {
+    if (data?.price == null) throw new Error("bad cached quote");
+    return {
+      symbol: data.symbol,
+      price: data.price,
+      change: data.change ?? null,
+      time: data.time ? new Date(data.time * 1000) : new Date(),
+    };
+  }
+
+  async function loadQuote(symbol) {
+    const yahoo = yahooUrl(symbol);
+    const finterm =
+      "https://finterm.xyz/api/data/yahoo/quote?symbol=" + encodeURIComponent(symbol);
+    const attempts = [
+      // Same-origin cache (GitHub Actions refreshes this)
+      async () => parseCached(await fetchJson("./quote.json?ts=" + Date.now())),
+      // Live via CORS proxies (fully-encoded URL matters)
+      async () => parseFinterm(await fetchJson("https://api.allorigins.win/raw?url=" + encodeAll(finterm))),
+      async () => {
+        const j = await fetchJson("https://api.allorigins.win/get?url=" + encodeAll(finterm));
+        const body = typeof j.contents === "string" ? JSON.parse(j.contents) : j.contents;
+        return parseFinterm(body);
+      },
+      async () => parseYahooChart(await fetchJson("https://api.allorigins.win/raw?url=" + encodeAll(yahoo))),
+      async () => parseYahooChart(await fetchJson(yahoo)),
+    ];
+
+    let lastErr;
+    for (const attempt of attempts) {
+      try {
+        const q = await attempt();
+        if (q?.price == null) throw new Error("no price");
+        return q;
+      } catch (err) {
+        lastErr = err;
+      }
+    }
+    throw lastErr || new Error("All quote sources failed");
   }
 
   function render() {
@@ -344,7 +374,7 @@
     const started = Date.now();
     if (initial) document.body.classList.remove("is-ready");
     try {
-      quote = parseQuote(await loadYahoo(loadSettings().symbol));
+      quote = await loadQuote(loadSettings().symbol);
       if (quote.symbol) {
         const cfg = loadSettings();
         cfg.symbol = quote.symbol;
