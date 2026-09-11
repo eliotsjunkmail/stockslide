@@ -11,7 +11,7 @@
       href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=23" />
+    <link rel="stylesheet" href="styles.css?v=24" />
   </head>
   <body>
     <div class="fill" id="fill" aria-hidden="true"></div>
@@ -25,7 +25,10 @@
       <div class="spinner" id="spinner" role="status" aria-label="Loading quote"></div>
       <div class="figures" id="figures">
         <p class="value" id="value">—</p>
-        <p class="dist" id="dist"></p>
+        <p class="dist" id="dist-line" hidden>
+          <span class="dist-value" id="dist"></span>
+          <span class="dist-label">per year</span>
+        </p>
         <p class="story" id="story"></p>
       </div>
     </main>
@@ -86,6 +89,6 @@
       </form>
     </div>
 
-    <script src="app.js?v=23"></script>
+    <script src="app.js?v=24"></script>
   </body>
 </html>

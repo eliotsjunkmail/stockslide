@@ -12,6 +12,7 @@
     fill: document.getElementById("fill"),
     value: document.getElementById("value"),
     dist: document.getElementById("dist"),
+    distLine: document.getElementById("dist-line"),
     story: document.getElementById("story"),
     gear: document.getElementById("gear"),
     scrim: document.getElementById("scrim"),
@@ -291,7 +292,13 @@
     const yearly = value != null ? value * distribution : null;
 
     els.value.textContent = compactMoney(value);
-    els.dist.textContent = yearly == null ? "" : compactMoney(yearly);
+    if (yearly == null) {
+      els.dist.textContent = "";
+      if (els.distLine) els.distLine.hidden = true;
+    } else {
+      els.dist.textContent = compactMoney(yearly);
+      if (els.distLine) els.distLine.hidden = false;
+    }
 
     if (!quote || quote.price == null) {
       els.story.textContent = "";

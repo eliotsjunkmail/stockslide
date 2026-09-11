@@ -131,6 +131,8 @@ body {
 
 .value,
 .dist,
+.dist-value,
+.dist-label,
 .story,
 .slide-bubble,
 .slide-scale {
@@ -152,10 +154,29 @@ body {
 
 .dist {
   margin: 0.55rem 0 0;
+  display: grid;
+  justify-items: center;
+  gap: 0.15rem;
+}
+
+.dist-value {
   font-size: clamp(1.1rem, 4vw, 1.6rem);
   font-weight: 700;
   letter-spacing: 0.04em;
   -webkit-text-stroke-width: 5px;
+}
+
+.dist-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  -webkit-text-stroke-width: 2px;
+  opacity: 0.85;
+}
+
+.dist[hidden] {
+  display: none;
 }
 
 .story {
