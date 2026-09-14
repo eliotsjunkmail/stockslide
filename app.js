@@ -254,9 +254,7 @@
     const finterm =
       "https://finterm.xyz/api/data/yahoo/quote?symbol=" + encodeURIComponent(symbol);
     const attempts = [
-      // Same-origin cache (GitHub Actions refreshes this)
-      async () => parseCached(await fetchJson("./quote.json?ts=" + Date.now())),
-      // Live via CORS proxies (fully-encoded URL matters)
+      // Live first so the UI does not stick on a stale quote.json
       async () => parseFinterm(await fetchJson("https://api.allorigins.win/raw?url=" + encodeAll(finterm))),
       async () => {
         const j = await fetchJson("https://api.allorigins.win/get?url=" + encodeAll(finterm));
@@ -265,6 +263,8 @@
       },
       async () => parseYahooChart(await fetchJson("https://api.allorigins.win/raw?url=" + encodeAll(yahoo))),
       async () => parseYahooChart(await fetchJson(yahoo)),
+      // Same-origin fallback only if live sources fail
+      async () => parseCached(await fetchJson("./quote.json?ts=" + Date.now())),
     ];
 
     let lastErr;
@@ -467,6 +467,7 @@
 
   setInterval(() => {
     const open = updateMarketBadge();
-    if (open) refresh();
+    // Always refresh on this tick when open; when closed, refresh every 5th tick (~5 min)
+    if (open || (Math.floor(Date.now() / 60_000) % 5 === 0)) refresh();
   }, 60_000);
 })();
